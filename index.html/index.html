@@ -1,0 +1,138 @@
+
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#090B10">
+<title>NEXUS | Private Messaging</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#090B10;color:#F4F6FC;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input{font:inherit}
+button{cursor:pointer}
+.app{max-width:1100px;margin:auto;min-height:100vh;padding:20px}
+header{display:flex;align-items:center;gap:12px;padding:12px 0 24px}
+.logo{background:#7865FF;padding:12px;border-radius:13px;font-weight:800}
+.brand{font-size:23px;font-weight:800;letter-spacing:2px}
+.sub{color:#929BAE;font-size:11px;letter-spacing:2px}
+.panel{background:#121722;border:1px solid #252D3B;border-radius:20px;overflow:hidden}
+.login{max-width:420px;margin:50px auto;padding:28px}
+h1{font-size:26px}
+p,.muted{color:#929BAE}
+input{width:100%;background:#090B10;color:white;border:1px solid #30394A;padding:14px;border-radius:11px;margin:8px 0 15px;outline:none}
+input:focus{border-color:#7865FF}
+.primary{width:100%;border:0;background:#7865FF;color:white;padding:14px;border-radius:11px;font-weight:700}
+.demo{font-size:12px;text-align:center;margin-top:18px}
+.chat-layout{display:none;grid-template-columns:320px 1fr;min-height:650px}
+.sidebar{padding:18px;border-right:1px solid #252D3B}
+.section-title{font-size:20px;font-weight:700;margin-bottom:18px}
+.person{display:flex;gap:12px;align-items:center;padding:14px 8px;border-radius:12px;cursor:pointer}
+.person:hover,.person.active{background:#20243A}
+.avatar{width:42px;height:42px;border-radius:50%;background:#302B55;display:grid;place-items:center;color:#C4B9FF;font-weight:800}
+.person-info{flex:1;min-width:0}
+.person-info strong{display:block}
+.person-info small{color:#929BAE}
+.chat{display:flex;flex-direction:column;min-width:0}
+.chat-head{padding:18px;border-bottom:1px solid #252D3B;display:flex;align-items:center;gap:12px}
+.messages{padding:20px;flex:1;min-height:390px;display:flex;flex-direction:column;gap:14px}
+.bubble{max-width:78%;padding:12px 15px;border-radius:16px;background:#202A39;align-self:flex-start}
+.bubble.mine{background:#5142B5;align-self:flex-end}
+.time{display:block;font-size:10px;color:#C5C3DD;margin-top:5px}
+.composer{display:flex;gap:8px;padding:15px;border-top:1px solid #252D3B}
+.composer input{margin:0;min-width:0}
+.composer button{background:#7865FF;border:0;border-radius:11px;color:white;padding:0 18px}
+.security{font-size:11px;color:#28C990;margin-left:auto}
+@media(max-width:650px){
+.app{padding:12px}
+.chat-layout{grid-template-columns:1fr;min-height:calc(100vh - 100px)}
+.sidebar{border-right:0;border-bottom:1px solid #252D3B;padding:12px}
+.person{padding:9px}
+.person:nth-of-type(n+4){display:none}
+.messages{min-height:300px}
+.chat-head{padding:13px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+<div class="logo">N</div>
+<div><div class="brand">NEXUS</div><div class="sub">PRIVATE MESSAGING</div></div>
+</header>
+
+<section class="panel login" id="login">
+<div class="sub">WELCOME TO NEXUS</div>
+<h1>Mesajele tale. Spațiul tău.</h1>
+<p>Conectează-te la o experiență de mesagerie construită în jurul confidențialității.</p>
+<label>Email</label>
+<input type="email" id="email" placeholder="nume@email.com">
+<label>Parolă</label>
+<input type="password" id="password" placeholder="Parola ta">
+<button class="primary" onclick="enterApp()">Intră în NEXUS</button>
+<div class="demo">PROTOTIP DEMO · Autentificarea nu este activă</div>
+</section>
+
+<section class="panel chat-layout" id="messenger">
+<aside class="sidebar">
+<div class="section-title">Mesaje</div>
+<input placeholder="Caută conversații..." oninput="searchChats(this.value)">
+<div id="people">
+<div class="person active" onclick="openChat(this,'Alex')"><div class="avatar">A</div><div class="person-info"><strong>Alex</strong><small>Ne auzim mai târziu.</small></div></div>
+<div class="person" onclick="openChat(this,'Daniel')"><div class="avatar">D</div><div class="person-info"><strong>Daniel</strong><small>Am primit fișierul.</small></div></div>
+<div class="person" onclick="openChat(this,'NEXUS Team')"><div class="avatar">N</div><div class="person-info"><strong>NEXUS Team</strong><small>Device verified ✓</small></div></div>
+</div>
+</aside>
+<main class="chat">
+<div class="chat-head">
+<div class="avatar" id="chatAvatar">A</div>
+<div><strong id="chatName">Alex</strong><div class="muted" style="font-size:11px">Conversație demo</div></div>
+<div class="security">● E2EE DESIGN</div>
+</div>
+<div class="messages" id="messages">
+<div class="bubble">Salut! Cum merge NEXUS?<span class="time">12:40</span></div>
+<div class="bubble mine">Construim ceva interesant. 🔐<span class="time">12:41</span></div>
+<div class="bubble">Abia aștept să-l testăm!<span class="time">12:42</span></div>
+</div>
+<form class="composer" onsubmit="sendMessage(event)">
+<input id="message" placeholder="Scrie un mesaj..." autocomplete="off">
+<button type="submit">➤</button>
+</form>
+</main>
+</section>
+</div>
+<script>
+function enterApp(){
+document.getElementById('login').style.display='none';
+document.getElementById('messenger').style.display='grid';
+}
+function sendMessage(e){
+e.preventDefault();
+const input=document.getElementById('message');
+if(!input.value.trim())return;
+const bubble=document.createElement('div');
+bubble.className='bubble mine';
+bubble.textContent=input.value;
+const time=document.createElement('span');
+time.className='time';
+time.textContent=new Date().toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'});
+bubble.appendChild(time);
+document.getElementById('messages').appendChild(bubble);
+input.value='';
+document.getElementById('messages').scrollTop=99999;
+}
+function openChat(el,name){
+document.querySelectorAll('.person').forEach(p=>p.classList.remove('active'));
+el.classList.add('active');
+document.getElementById('chatName').textContent=name;
+document.getElementById('chatAvatar').textContent=name[0];
+document.getElementById('messages').innerHTML='<div class="bubble">Aceasta este o conversație demonstrativă cu '+name+'.<span class="time">Acum</span></div>';
+}
+function searchChats(value){
+document.querySelectorAll('.person').forEach(p=>{
+p.style.display=p.textContent.toLowerCase().includes(value.toLowerCase())?'flex':'none';
+});
+}
+</script>
+</body>
+</html>
