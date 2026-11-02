@@ -1,0 +1,44 @@
+# NEXUS - Security Architecture
+
+## 1. Security Principle
+End-to-End Encryption is mandatory.
+
+The server must never have access to plaintext private messages.
+
+## 2. Encryption
+- Use an audited E2EE protocol.
+- No custom cryptographic algorithms.
+- Encrypt messages on the sender's device.
+- Decrypt messages only on authorized recipient devices.
+
+## 3. Device Security
+- Unique cryptographic identity per device.
+- Device verification.
+- Secure key storage.
+- Session management.
+
+## 4. File Security
+- Encrypt files before uploading.
+- Protect encryption keys separately.
+- Never expose private file contents to the server.
+
+## 5. Authentication
+- Secure password hashing.
+- Session protection.
+- Rate limiting.
+- Account recovery safeguards.
+
+## 6. Privacy
+- Minimize collected personal data.
+- Avoid storing plaintext message content.
+- No sensitive message content in push notifications.
+
+## 7. Security Audits
+- Dependency audits.
+- Encryption implementation testing.
+- Penetration testing.
+- Vulnerability reporting.
+
+## Status
+Security requirements defined.
+Implementation pending.
