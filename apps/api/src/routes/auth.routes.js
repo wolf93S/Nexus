@@ -1,3 +1,4 @@
+
 import {
   registerSchema,
   loginSchema
@@ -59,8 +60,16 @@ export default async function authRoutes(app) {
         });
       }
 
+      const accessToken = app.jwt.sign({
+        sub: String(user.id),
+        username: user.username
+      });
+
       return reply.code(200).send({
         message: "Authentication successful",
+        accessToken,
+        tokenType: "Bearer",
+        expiresIn: 900,
         user
       });
     } catch (error) {
