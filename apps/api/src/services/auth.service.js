@@ -1,3 +1,4 @@
+
 import { db } from "../db.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
 
@@ -33,7 +34,12 @@ export const registerUser = async ({
     return result.rows[0];
   } catch (error) {
     if (error.code === "23505") {
-      throw new Error("Username or email already exists");
+      const duplicateError = new Error(
+        "Username or email already exists"
+      );
+
+      duplicateError.code = "23505";
+      throw duplicateError;
     }
 
     throw error;
