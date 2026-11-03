@@ -1,0 +1,68 @@
+import "dotenv/config";
+import { db } from "./db.js";
+import { readdir, readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
+const currentFile = fileURLToPath(import.meta.url);
+const currentDir = path.dirname(currentFile);
+
+const migrationsDir = path.join(currentDir, "migrations");
+
+const migrate = async () => {
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        id SERIAL PRIMARY KEY,
+        filename TEXT NOT NULL UNIQUE,
+        executed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    const files = (await readdir(migrationsDir))
+      .filter((file) => file.endsWith(".sql"))
+      .sort();
+
+    for (const file of files) {
+      const existing = await client.query(
+        "SELECT id FROM schema_migrations WHERE filename = $1",
+        [file]
+      );
+
+      if (existing.rowCount > 0) {
+        continue;
+      }
+
+      const sql = await readFile(
+        path.join(migrationsDir, file),
+        "utf8"
+      );
+
+      await client.query(sql);
+
+      await client.query(
+        "INSERT INTO schema_migrations (filename) VALUES ($1)",
+        [file]
+      );
+
+      console.log(`Migration executed: ${file}`);
+    }
+
+    await client.query("COMMIT");
+
+    console.log("NEXUS database migrations completed.");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Migration failed:", error);
+    process.exitCode = 1;
+  } finally {
+    client.release();
+    await db.end();
+  }
+};
+
+migrate();
