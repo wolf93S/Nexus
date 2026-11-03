@@ -7,7 +7,7 @@ import jwt from "@fastify/jwt";
 import "dotenv/config";
 import { db, checkDatabase } from "./db.js";
 import authRoutes from "./routes/auth.routes.js";
-
+import authRoutes from "./routes/auth.routes.js";
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
   throw new Error("JWT_SECRET must contain at least 32 characters");
 }
@@ -55,6 +55,9 @@ app.get("/health/db", async (request, reply) => {
     request.log.error(error);
 
     return reply.code(503).send({
+      await app.register(userRoutes, {
+  prefix: "/api/users"
+});
       status: "error",
       database: "disconnected"
     });
