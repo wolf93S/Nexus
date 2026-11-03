@@ -9,6 +9,7 @@ const app = document.querySelector("#app");
 
 let accessToken = null;
 let currentUser = null;
+let isRegisterMode = false;
 
 app.innerHTML = `
   <div class="app">
@@ -27,7 +28,7 @@ app.innerHTML = `
         Conectează-te la o experiență de mesagerie construită în jurul confidențialității.
       </p>
 
-      <form id="authForm">
+      <form id="authForm" novalidate>
         <div id="registerFields" hidden>
           <label for="username">Nume de utilizator</label>
           <input
@@ -84,7 +85,7 @@ app.innerHTML = `
         Nu ai cont? Creează unul
       </button>
 
-      <div class="demo" id="authStatus">SECURE AUTHENTICATION</div>
+      <div class="demo">SECURE AUTHENTICATION</div>
     </section>
 
     <section class="panel messenger" id="messenger" hidden>
@@ -141,49 +142,125 @@ const authPanel = document.querySelector("#authPanel");
 const messenger = document.querySelector("#messenger");
 const authForm = document.querySelector("#authForm");
 const registerFields = document.querySelector("#registerFields");
+const usernameInput = document.querySelector("#username");
+const displayNameInput = document.querySelector("#displayName");
+const emailInput = document.querySelector("#email");
+const passwordInput = document.querySelector("#password");
 const authTitle = document.querySelector("#authTitle");
 const authDescription = document.querySelector("#authDescription");
 const authMessage = document.querySelector("#authMessage");
 const submitButton = document.querySelector("#submitButton");
 const switchAuth = document.querySelector("#switchAuth");
-const passwordInput = document.querySelector("#password");
-
-let isRegisterMode = false;
 
 const setMessage = (message) => {
   authMessage.textContent = message;
 };
 
 const requestApi = async (path, options = {}) => {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {})
-    }
-  });
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      }
+    });
+  } catch {
+    throw new Error(
+      "Nu s-a putut contacta serverul NEXUS. Verifică dacă API-ul este pornit."
+    );
+  }
 
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    if (response.status === 400) {
+      throw new Error(
+        data.details
+          ? "Datele introduse nu respectă regulile de validare."
+          : data.error || "Date invalide."
+      );
+    }
+
+    if (response.status === 409) {
+      throw new Error("Username-ul sau emailul este deja folosit.");
+    }
+
+    if (response.status === 401) {
+      throw new Error("Email sau parolă incorectă.");
+    }
+
+    if (response.status === 429) {
+      throw new Error(
+        "Prea multe încercări. Așteaptă înainte să încerci din nou."
+      );
+    }
+
     throw new Error(
-      data.error || data.message || "A apărut o eroare de comunicare cu serverul."
+      data.error || data.message || "A apărut o eroare de server."
     );
   }
 
   return data;
 };
 
+const validateEmail = (email) => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
+
+const validateRegistration = ({ username, email, password }) => {
+  if (!username) {
+    return "Introdu un nume de utilizator.";
+  }
+
+  if (username.length < 3 || username.length > 32) {
+    return "Username-ul trebuie să aibă între 3 și 32 de caractere.";
+  }
+
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    return "Username-ul poate conține doar litere, cifre și underscore.";
+  }
+
+  if (!validateEmail(email) || email.length > 255) {
+    return "Introdu o adresă de email validă.";
+  }
+
+  if (password.length < 12) {
+    return "Parola trebuie să aibă minimum 12 caractere.";
+  }
+
+  if (password.length > 128) {
+    return "Parola nu poate depăși 128 de caractere.";
+  }
+
+  return null;
+};
+
+const validateLogin = ({ email, password }) => {
+  if (!validateEmail(email) || email.length > 255) {
+    return "Introdu o adresă de email validă.";
+  }
+
+  if (!password || password.length > 128) {
+    return "Introdu o parolă validă.";
+  }
+
+  return null;
+};
+
 const showLogin = () => {
   isRegisterMode = false;
   registerFields.hidden = true;
+  usernameInput.required = false;
+  passwordInput.autocomplete = "current-password";
 
   authTitle.textContent = "Mesajele tale. Spațiul tău.";
   authDescription.textContent =
     "Conectează-te la experiența NEXUS.";
   submitButton.textContent = "Intră în NEXUS";
   switchAuth.textContent = "Nu ai cont? Creează unul";
-  passwordInput.autocomplete = "current-password";
 
   setMessage("");
 };
@@ -191,13 +268,14 @@ const showLogin = () => {
 const showRegister = () => {
   isRegisterMode = true;
   registerFields.hidden = false;
+  usernameInput.required = true;
+  passwordInput.autocomplete = "new-password";
 
   authTitle.textContent = "Creează contul tău.";
   authDescription.textContent =
     "Începe să folosești NEXUS.";
   submitButton.textContent = "Creează cont";
   switchAuth.textContent = "Ai deja cont? Conectează-te";
-  passwordInput.autocomplete = "new-password";
 
   setMessage("");
 };
@@ -213,16 +291,27 @@ switchAuth.addEventListener("click", () => {
 authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  const email = document.querySelector("#email").value.trim();
+  const email = emailInput.value.trim();
   const password = passwordInput.value;
+  const username = usernameInput.value.trim();
+
+  const formData = { email, password, username };
+
+  const validationError = isRegisterMode
+    ? validateRegistration(formData)
+    : validateLogin(formData);
+
+  if (validationError) {
+    setMessage(validationError);
+    return;
+  }
 
   submitButton.disabled = true;
   setMessage("Se comunică cu serverul NEXUS...");
 
   try {
     if (isRegisterMode) {
-      const username = document.querySelector("#username").value.trim();
-      const displayName = document.querySelector("#displayName").value.trim();
+      const displayName = displayNameInput.value.trim();
 
       await requestApi("/api/auth/register", {
         method: "POST",
@@ -235,7 +324,7 @@ authForm.addEventListener("submit", async (event) => {
       });
 
       showLogin();
-      document.querySelector("#email").value = email;
+      emailInput.value = email;
       setMessage("Cont creat cu succes. Acum te poți conecta.");
       return;
     }
@@ -246,7 +335,9 @@ authForm.addEventListener("submit", async (event) => {
     });
 
     if (!result.accessToken) {
-      throw new Error("Serverul nu a returnat un token de autentificare.");
+      throw new Error(
+        "Serverul nu a returnat un token de autentificare."
+      );
     }
 
     accessToken = result.accessToken;
@@ -261,18 +352,19 @@ authForm.addEventListener("submit", async (event) => {
     currentUser = profile.user;
 
     if (!currentUser) {
-      throw new Error("Profilul utilizatorului nu a putut fi încărcat.");
+      throw new Error(
+        "Profilul utilizatorului nu a putut fi încărcat."
+      );
     }
 
-    document.querySelector("#userName").textContent =
+    const displayName =
       currentUser.display_name || currentUser.username;
 
+    document.querySelector("#userName").textContent = displayName;
     document.querySelector("#userAvatar").textContent =
       (currentUser.username || "N").charAt(0).toUpperCase();
 
-    document.querySelector("#chatName").textContent =
-      currentUser.display_name || currentUser.username;
-
+    document.querySelector("#chatName").textContent = displayName;
     document.querySelector("#chatAvatar").textContent =
       (currentUser.username || "N").charAt(0).toUpperCase();
 
@@ -281,6 +373,7 @@ authForm.addEventListener("submit", async (event) => {
 
     authPanel.hidden = true;
     messenger.hidden = false;
+    setMessage("");
   } catch (error) {
     accessToken = null;
     currentUser = null;
