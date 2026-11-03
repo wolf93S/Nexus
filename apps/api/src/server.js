@@ -18,10 +18,20 @@ const app = Fastify({
   trustProxy: false
 });
 
+const allowedOrigins = (
+  process.env.WEB_ORIGIN || "http://localhost:5173"
+)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 await app.register(helmet);
 
 await app.register(cors, {
-  origin: false
+  origin: allowedOrigins,
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  maxAge: 600
 });
 
 await app.register(rateLimit, {
