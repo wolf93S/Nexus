@@ -42,7 +42,14 @@ export default async function authRoutes(app) {
     }
   });
 
-  app.post("/login", async (request, reply) => {
+  app.post("/login", {
+    config: {
+      rateLimit: {
+        max: 5,
+        timeWindow: "15 minutes"
+      }
+    }
+  }, async (request, reply) => {
     const validation = loginSchema.safeParse(request.body);
 
     if (!validation.success) {
