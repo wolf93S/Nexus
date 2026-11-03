@@ -1,10 +1,16 @@
+
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
+import jwt from "@fastify/jwt";
 import "dotenv/config";
 import { db, checkDatabase } from "./db.js";
 import authRoutes from "./routes/auth.routes.js";
+
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  throw new Error("JWT_SECRET must contain at least 32 characters");
+}
 
 const app = Fastify({
   logger: true,
@@ -20,6 +26,13 @@ await app.register(cors, {
 await app.register(rateLimit, {
   max: 100,
   timeWindow: "1 minute"
+});
+
+await app.register(jwt, {
+  secret: process.env.JWT_SECRET,
+  sign: {
+    expiresIn: "15m"
+  }
 });
 
 app.get("/health", async () => {
