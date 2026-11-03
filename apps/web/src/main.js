@@ -1,7 +1,14 @@
 
 import "./style.css";
 
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:3000"
+).replace(/\/+$/, "");
+
 const app = document.querySelector("#app");
+
+let accessToken = null;
+let currentUser = null;
 
 app.innerHTML = `
   <div class="app">
@@ -13,139 +20,285 @@ app.innerHTML = `
       </div>
     </header>
 
-    <section class="panel login" id="login">
+    <section class="panel login" id="authPanel">
       <div class="subtitle">WELCOME TO NEXUS</div>
-      <h1>Mesajele tale. Spațiul tău.</h1>
-      <p>Conectează-te la o experiență de mesagerie construită în jurul confidențialității.</p>
+      <h1 id="authTitle">Mesajele tale. Spațiul tău.</h1>
+      <p id="authDescription">
+        Conectează-te la o experiență de mesagerie construită în jurul confidențialității.
+      </p>
 
-      <label for="email">Email</label>
-      <input type="email" id="email" placeholder="nume@email.com">
+      <form id="authForm">
+        <div id="registerFields" hidden>
+          <label for="username">Nume de utilizator</label>
+          <input
+            type="text"
+            id="username"
+            minlength="3"
+            maxlength="32"
+            autocomplete="username"
+            placeholder="numele_tau"
+          >
 
-      <label for="password">Parolă</label>
-      <input type="password" id="password" placeholder="Parola ta">
+          <label for="displayName">Nume afișat</label>
+          <input
+            type="text"
+            id="displayName"
+            maxlength="64"
+            autocomplete="name"
+            placeholder="Numele tău"
+          >
+        </div>
 
-      <button class="primary" id="loginButton">Intră în NEXUS</button>
-      <div class="demo">PROTOTIP DEMO · Autentificarea nu este activă</div>
+        <label for="email">Email</label>
+        <input
+          type="email"
+          id="email"
+          maxlength="255"
+          autocomplete="email"
+          placeholder="nume@email.com"
+          required
+        >
+
+        <label for="password">Parolă</label>
+        <input
+          type="password"
+          id="password"
+          maxlength="128"
+          autocomplete="current-password"
+          placeholder="Parola ta"
+          required
+        >
+
+        <button class="primary" id="submitButton" type="submit">
+          Intră în NEXUS
+        </button>
+      </form>
+
+      <p id="authMessage" role="alert" aria-live="polite"></p>
+
+      <button
+        type="button"
+        id="switchAuth"
+        style="width:100%;margin-top:16px;background:none;border:0;color:#a18eff;cursor:pointer;"
+      >
+        Nu ai cont? Creează unul
+      </button>
+
+      <div class="demo" id="authStatus">SECURE AUTHENTICATION</div>
     </section>
 
     <section class="panel messenger" id="messenger" hidden>
       <aside class="sidebar">
         <div class="section-title">Mesaje</div>
-        <input id="search" placeholder="Caută conversații...">
 
-        <div id="people">
-          <div class="person active" data-name="Alex">
-            <div class="avatar">A</div>
-            <div class="person-info">
-              <strong>Alex</strong>
-              <small>Ne auzim mai târziu.</small>
-            </div>
-          </div>
-
-          <div class="person" data-name="Daniel">
-            <div class="avatar">D</div>
-            <div class="person-info">
-              <strong>Daniel</strong>
-              <small>Am primit fișierul.</small>
-            </div>
-          </div>
-
-          <div class="person" data-name="NEXUS Team">
-            <div class="avatar">N</div>
-            <div class="person-info">
-              <strong>NEXUS Team</strong>
-              <small>Device verified ✓</small>
-            </div>
+        <div class="person active">
+          <div class="avatar" id="userAvatar">N</div>
+          <div class="person-info">
+            <strong id="userName">Utilizator</strong>
+            <small>Cont autentificat</small>
           </div>
         </div>
+
+        <button
+          type="button"
+          id="logoutButton"
+          style="width:100%;margin-top:24px;padding:12px;border:1px solid #252536;border-radius:10px;background:#11111b;color:#f4f4f8;cursor:pointer;"
+        >
+          Deconectare
+        </button>
       </aside>
 
       <main class="chat">
         <div class="chat-head">
-          <div class="avatar" id="chatAvatar">A</div>
+          <div class="avatar" id="chatAvatar">N</div>
           <div>
-            <strong id="chatName">Alex</strong>
-            <div class="muted">Conversație demo</div>
+            <strong id="chatName">NEXUS</strong>
+            <div class="muted" id="accountEmail"></div>
           </div>
-          <div class="security">● DEMO MODE</div>
+          <div class="security">● AUTHENTICATED</div>
         </div>
 
         <div class="messages" id="messages">
-          <div class="bubble">Salut! Cum merge NEXUS?<span class="time">12:40</span></div>
-          <div class="bubble mine">Construim ceva interesant. 🔐<span class="time">12:41</span></div>
-          <div class="bubble">Abia aștept să-l testăm!<span class="time">12:42</span></div>
+          <div class="bubble">
+            Autentificarea a reușit.
+            <span class="time">NEXUS API</span>
+          </div>
+          <div class="bubble mine">
+            Profilul a fost încărcat de pe server.
+            <span class="time">SECURE SESSION</span>
+          </div>
+          <div class="bubble">
+            Sistemul de mesagerie este încă în dezvoltare.
+            <span class="time">INFO</span>
+          </div>
         </div>
-
-        <form class="composer" id="messageForm">
-          <input id="message" placeholder="Scrie un mesaj..." autocomplete="off">
-          <button type="submit">➤</button>
-        </form>
       </main>
     </section>
   </div>
 `;
 
-const login = document.querySelector("#login");
+const authPanel = document.querySelector("#authPanel");
 const messenger = document.querySelector("#messenger");
+const authForm = document.querySelector("#authForm");
+const registerFields = document.querySelector("#registerFields");
+const authTitle = document.querySelector("#authTitle");
+const authDescription = document.querySelector("#authDescription");
+const authMessage = document.querySelector("#authMessage");
+const submitButton = document.querySelector("#submitButton");
+const switchAuth = document.querySelector("#switchAuth");
+const passwordInput = document.querySelector("#password");
 
-document.querySelector("#loginButton").addEventListener("click", () => {
-  login.hidden = true;
-  messenger.hidden = false;
-});
+let isRegisterMode = false;
 
-document.querySelector("#search").addEventListener("input", (event) => {
-  const query = event.target.value.toLowerCase();
+const setMessage = (message) => {
+  authMessage.textContent = message;
+};
 
-  document.querySelectorAll(".person").forEach((person) => {
-    person.hidden = !person.textContent.toLowerCase().includes(query);
+const requestApi = async (path, options = {}) => {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
   });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data.error || data.message || "A apărut o eroare de comunicare cu serverul."
+    );
+  }
+
+  return data;
+};
+
+const showLogin = () => {
+  isRegisterMode = false;
+  registerFields.hidden = true;
+
+  authTitle.textContent = "Mesajele tale. Spațiul tău.";
+  authDescription.textContent =
+    "Conectează-te la experiența NEXUS.";
+  submitButton.textContent = "Intră în NEXUS";
+  switchAuth.textContent = "Nu ai cont? Creează unul";
+  passwordInput.autocomplete = "current-password";
+
+  setMessage("");
+};
+
+const showRegister = () => {
+  isRegisterMode = true;
+  registerFields.hidden = false;
+
+  authTitle.textContent = "Creează contul tău.";
+  authDescription.textContent =
+    "Începe să folosești NEXUS.";
+  submitButton.textContent = "Creează cont";
+  switchAuth.textContent = "Ai deja cont? Conectează-te";
+  passwordInput.autocomplete = "new-password";
+
+  setMessage("");
+};
+
+switchAuth.addEventListener("click", () => {
+  if (isRegisterMode) {
+    showLogin();
+  } else {
+    showRegister();
+  }
 });
 
-document.querySelectorAll(".person").forEach((person) => {
-  person.addEventListener("click", () => {
-    document.querySelectorAll(".person").forEach((item) => {
-      item.classList.remove("active");
-    });
-
-    person.classList.add("active");
-
-    const name = person.dataset.name;
-    document.querySelector("#chatName").textContent = name;
-    document.querySelector("#chatAvatar").textContent = name[0];
-
-    document.querySelector("#messages").innerHTML = `
-      <div class="bubble">
-        Aceasta este o conversație demonstrativă cu ${name}.
-        <span class="time">Acum</span>
-      </div>
-    `;
-  });
-});
-
-document.querySelector("#messageForm").addEventListener("submit", (event) => {
+authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  const input = document.querySelector("#message");
-  const value = input.value.trim();
+  const email = document.querySelector("#email").value.trim();
+  const password = passwordInput.value;
 
-  if (!value) return;
+  submitButton.disabled = true;
+  setMessage("Se comunică cu serverul NEXUS...");
 
-  const bubble = document.createElement("div");
-  bubble.className = "bubble mine";
-  bubble.textContent = value;
+  try {
+    if (isRegisterMode) {
+      const username = document.querySelector("#username").value.trim();
+      const displayName = document.querySelector("#displayName").value.trim();
 
-  const time = document.createElement("span");
-  time.className = "time";
-  time.textContent = new Date().toLocaleTimeString("ro-RO", {
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+      await requestApi("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          username,
+          email,
+          password,
+          ...(displayName ? { displayName } : {})
+        })
+      });
 
-  bubble.appendChild(time);
-  document.querySelector("#messages").appendChild(bubble);
+      showLogin();
+      document.querySelector("#email").value = email;
+      setMessage("Cont creat cu succes. Acum te poți conecta.");
+      return;
+    }
 
-  input.value = "";
+    const result = await requestApi("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password })
+    });
 
-  const messages = document.querySelector("#messages");
-  messages.scrollTop = messages.scrollHeight;
+    if (!result.accessToken) {
+      throw new Error("Serverul nu a returnat un token de autentificare.");
+    }
+
+    accessToken = result.accessToken;
+
+    const profile = await requestApi("/api/users/me", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    currentUser = profile.user;
+
+    if (!currentUser) {
+      throw new Error("Profilul utilizatorului nu a putut fi încărcat.");
+    }
+
+    document.querySelector("#userName").textContent =
+      currentUser.display_name || currentUser.username;
+
+    document.querySelector("#userAvatar").textContent =
+      (currentUser.username || "N").charAt(0).toUpperCase();
+
+    document.querySelector("#chatName").textContent =
+      currentUser.display_name || currentUser.username;
+
+    document.querySelector("#chatAvatar").textContent =
+      (currentUser.username || "N").charAt(0).toUpperCase();
+
+    document.querySelector("#accountEmail").textContent =
+      currentUser.email;
+
+    authPanel.hidden = true;
+    messenger.hidden = false;
+  } catch (error) {
+    accessToken = null;
+    currentUser = null;
+    setMessage(error.message);
+  } finally {
+    submitButton.disabled = false;
+  }
 });
+
+document.querySelector("#logoutButton").addEventListener("click", () => {
+  accessToken = null;
+  currentUser = null;
+
+  messenger.hidden = true;
+  authPanel.hidden = false;
+
+  authForm.reset();
+  showLogin();
+});
+
+showLogin();
